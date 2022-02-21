@@ -1,6 +1,8 @@
 from fastkml import kml
 from geopy import distance
 
+all_edges = []
+
 with open('data/GenieEdges.kml') as kml_file:
     doc=kml_file.read().encode('utf-8')
     k = kml.KML()
@@ -15,4 +17,4 @@ with open('data/GenieEdges.kml') as kml_file:
         for i in range(1, len(coordinates)):
             full_distance += distance.distance(coordinates[i-1][1::-1],
                                                coordinates[i][1::-1]).miles
-        print(A, B, full_distance)
+        all_edges.append((A, B, full_distance))
