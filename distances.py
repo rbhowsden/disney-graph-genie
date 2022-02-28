@@ -32,7 +32,14 @@ with open('data/GenieEdges.kml') as kml_file:
         source = dist_map[0]
         for target, dist in dist_map[1].items():
             if not has_numbers(source + target):
-                new_edges.append((source, target, dist))
+                if target not in ['TrainM','TrainT', 'TrainN', 'TrainF'] and source not in ['TrainM','TrainT', 'TrainN', 'TrainF']:
+                    new_edges.append((source, target, dist*1000))
 
 df = pd.DataFrame(new_edges, columns = ['Source', 'Target', 'Distance'])
-df.pivot(index='Source', columns='Target', values='Distance')
+pivoted_df = df.pivot(index='Source', columns='Target', values='Distance')
+data = {}
+data['distance_matrix'] = pivoted_df.values.tolist()
+data['num_vehicles'] = 1
+data['depot'] = 9
+data['att_names'] = pivoted_df.columns.tolist()
+

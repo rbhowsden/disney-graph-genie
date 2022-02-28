@@ -1270,7 +1270,7 @@
       </LineString>
     </Placemark>
     <Placemark>
-      <name>Main1_Main2</name>
+      <name>Entrance_Main2</name>
       <styleUrl>#line-000000-2938-nodesc</styleUrl>
       <LineString>
         <tessellate>1</tessellate>
