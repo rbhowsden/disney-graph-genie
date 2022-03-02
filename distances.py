@@ -59,13 +59,60 @@ def shortest_distances(rides=[], train=False, w_speed=4.7, t_speed=5.9):
             if not any(char.isdigit() for char in source + target):
                 short_paths.append((source, target, dist))
     
+    ride_lengths = {
+        'Alice': 240,
+        'Astro': 90,
+        'Autopia': 270,
+        'Buzz': 270,
+        'Canal': 570,
+        'Canoe': 600,
+        'Carrousel': 180,
+        'Casey': 240,
+        'Dumbo': 100,
+        'Entrance': 0,
+        'Gadget': 60,
+        'Indiana': 600,
+        'Jungle': 450,
+        'Lincoln': 960,
+        'Mad': 90,
+        'Mansion': 540,
+        'Matterhorn': 240,
+        'Millenium': 300,
+        'Monorail': 900,
+        'Nemo': 780,
+        'Peter': 180,
+        'Pinocchio': 180,
+        'Pirates': 900,
+        'Pooh': 240,
+        'Resistance': 1080,
+        'Riverboat': 1080,
+        'Roger': 240,
+        'Small': 840,
+        'Snow': 120,
+        'Space': 300,
+        'Splash': 660,
+        'Thunder': 210,
+        'Tiki': 870,
+        'Toad': 120,
+        'Tours': 420,
+        'Vehicles': 420,
+        'Train1': 0,
+        'Train2': 0,
+        'Train3': 0,
+        'Train4': 0,
+        'Entrance': 0
+    }
+    
+    filtered_paths = []
     if rides:
-        filtered_paths = []
         for path in short_paths:
             if path[0] in rides and path[1] in rides:
-                filtered_paths.append(path)
+                filtered_paths.append(
+                    (path[0], path[1], path[2] + ride_lengths[path[1]])
+                )
     else:
-        filtered_paths = short_paths
+        for path in short_paths:
+            filtered_paths.append((path[0], path[1], path[2] + ride_lengths[path[1]]))
 
     df = pd.DataFrame(filtered_paths, columns = ['Source', 'Target', 'Distance'])
     pivot_df = df.pivot('Source', 'Target', 'Distance')
@@ -106,7 +153,7 @@ def traveling_genie(rides, train, w_speed, t_speed):
     solution = routing_model.SolveWithParameters(search_param)
 
     if solution:
-        print(f'Best Solution: {solution.ObjectiveValue()} feet')
+        print(f'Best Solution: {solution.ObjectiveValue()} seconds')
         index = routing_model.Start(0)
         route_output = 'Attraction Route:\n'
         while not routing_model.IsEnd(index):
@@ -117,8 +164,6 @@ def traveling_genie(rides, train, w_speed, t_speed):
         route_output += f' {att_final}\n'
         print(route_output)
 
-# We need to be able to take in a subset of points and only use those
-# We need to be able to turn on and off the train shortcut
 # We need to be able to add ride times to the equation
 # We need to limit how much time that we have in the park
 
