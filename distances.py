@@ -126,6 +126,7 @@ def traveling_genie(rides, train, w_speed, t_speed):
     distance_matrix = df.values.tolist()
     attraction_names = df.columns.tolist()
     starting_node = attraction_names.index('Entrance')
+    hours_in_park = .5
 
     index_manager = (
         pywrapcp.RoutingIndexManager(
@@ -136,14 +137,26 @@ def traveling_genie(rides, train, w_speed, t_speed):
 
     routing_model = pywrapcp.RoutingModel(index_manager)
 
-    def edge_dist(start_index, end_index):
+    def time_callback(start_index, end_index):
         start_node = index_manager.IndexToNode(start_index)
         end_node = index_manager.IndexToNode(end_index)
         return distance_matrix[start_node][end_node]
 
-    transit_callback_index = routing_model.RegisterTransitCallback(edge_dist)
+    time_callback_index = routing_model.RegisterTransitCallback(time_callback)
 
-    routing_model.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+    routing_model.SetArcCostEvaluatorOfAllVehicles(time_callback_index)
+
+    routing_model.AddDimensionWithVehicleCapacity(
+        time_callback_index,
+        0,
+        [3600*hours_in_park],
+        True,
+        'TimeCapacity'
+    )
+
+    penalty = 100000
+    for node in range(1, len(distance_matrix)):
+        routing_model.AddDisjunction([index_manager.NodeToIndex(node)], penalty)
 
     search_param = pywrapcp.DefaultRoutingSearchParameters()
     search_param.first_solution_strategy = (
