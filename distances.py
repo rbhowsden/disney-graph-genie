@@ -8,9 +8,6 @@ from ortools.constraint_solver import routing_enums_pb2
 
 all_edges = []
 
-def has_numbers(input):
-    return any(char.isdigit() for char in input)
-
 def parse_paths():
     with open('data/GenieEdges.kml') as kml_file:
         doc = kml_file.read().encode('utf-8')
@@ -31,64 +28,63 @@ def parse_paths():
                 coordinates[i-1][1::-1],
                 coordinates[i][1::-1]
                 ).feet
-        all_paths.append((A, B, full_distance/0.75))
+        all_paths.append((A, B, full_distance))
     
     return all_paths
 
-def attraction_matrix(speed = 1, train = False, rides=[]):
+def shortest_distances(rides=[], train=False, w_speed=4.7, t_speed=5.9):
     all_paths = parse_paths()
-    mirror_paths = [(x[1], x[0], x[2]) for x in all_paths]
-    train_paths = [
-        ('TrainM', 'TrainN', 300),
-        ('TrainN', 'TrainF', 300),
-        ('TrainF', 'TrainT', 300),
-        ('TrainT', 'TrainM', 300)
-    ]
+
+    path_times = []
+    for path in all_paths:
+        if 'Train' in path[0] or 'Train' in path[1]:
+            if train and 'Train' in path[0] and 'Train' in path[1]:
+                path_times.append((path[0], path[1], path[2]/t_speed))
+            elif not train and 'Train' in path[0] and 'Train' in path[1]:
+                continue
+            else:
+                path_times.append((path[0], path[1], path[2]/w_speed))
+                path_times.append((path[1], path[0], path[2]/w_speed))
+        else:
+            path_times.append((path[0], path[1], path[2]/w_speed))
+            path_times.append((path[1], path[0], path[2]/w_speed))
 
     G = nx.DiGraph()
-    G.add_weighted_edges_from(all_paths)
-    G.add_weighted_edges_from(mirror_paths)
-    G.add_weighted_edges_from(train_paths)
+    G.add_weighted_edges_from(path_times)
 
     short_paths = []
     for dist_map in nx.shortest_path_length(G, weight='weight'):
         source = dist_map[0]
         for target, dist in dist_map[1].items():
-            if not has_numbers(source + target):
-                if target not in ['TrainM','TrainT', 'TrainN', 'TrainF'] and source not in ['TrainM','TrainT', 'TrainN', 'TrainF']:
-                    short_paths.append((source, target, dist))
+            if not any(char.isdigit() for char in source + target):
+                short_paths.append((source, target, dist))
     
-    df = pd.DataFrame(short_paths, columns = ['Source', 'Target', 'Distance'])
-    piv_df = df.pivot('Source', 'Target', 'Distance')
+    if rides:
+        filtered_paths = []
+        for path in short_paths:
+            if path[0] in rides and path[1] in rides:
+                filtered_paths.append(path)
+    else:
+        filtered_paths = short_paths
 
-    data = {}
-    data['distance_matrix'] = piv_df.values.tolist()
-    data['num_groups'] = 1
-    data['starting_node'] = 9
-    data['att_names'] = piv_df.columns.tolist()
+    df = pd.DataFrame(filtered_paths, columns = ['Source', 'Target', 'Distance'])
+    pivot_df = df.pivot('Source', 'Target', 'Distance')
     
-    return data
+    return pivot_df
 
-def print_solution(index_manager, routing_model, solution, data):
-    print(f'Best Solution: {solution.ObjectiveValue()/60} feet')
-    index = routing_model.Start(0)
-    route_output = 'Attraction Route:\n'
-    while not routing_model.IsEnd(index):
-        att_name = data['att_names'][index_manager.IndexToNode(index)]
-        route_output += f' {att_name} -->'
-        index = solution.Value(routing_model.NextVar(index))
-    att_final = data['att_names'][index_manager.IndexToNode(index)]
-    route_output += f' {att_final}\n'
-    print(route_output)
+#Need to figure out better way to unpack these
+def traveling_genie(rides, train, w_speed, t_speed):
 
-def traveling_genie():
-    data = attraction_matrix()
+    df = shortest_distances(rides, train, w_speed, t_speed)
+    distance_matrix = df.values.tolist()
+    attraction_names = df.columns.tolist()
+    starting_node = attraction_names.index('Entrance')
 
     index_manager = (
         pywrapcp.RoutingIndexManager(
-            len(data['distance_matrix']),
-            data['num_groups'],
-            data['starting_node'])
+            len(distance_matrix),
+            1,
+            starting_node)
     )
 
     routing_model = pywrapcp.RoutingModel(index_manager)
@@ -96,7 +92,7 @@ def traveling_genie():
     def edge_dist(start_index, end_index):
         start_node = index_manager.IndexToNode(start_index)
         end_node = index_manager.IndexToNode(end_index)
-        return data['distance_matrix'][start_node][end_node]
+        return distance_matrix[start_node][end_node]
 
     transit_callback_index = routing_model.RegisterTransitCallback(edge_dist)
 
@@ -110,7 +106,16 @@ def traveling_genie():
     solution = routing_model.SolveWithParameters(search_param)
 
     if solution:
-        print_solution(index_manager, routing_model, solution, attraction_matrix())
+        print(f'Best Solution: {solution.ObjectiveValue()} feet')
+        index = routing_model.Start(0)
+        route_output = 'Attraction Route:\n'
+        while not routing_model.IsEnd(index):
+            att_name = attraction_names[index_manager.IndexToNode(index)]
+            route_output += f' {att_name} -->'
+            index = solution.Value(routing_model.NextVar(index))
+        att_final = attraction_names[index_manager.IndexToNode(index)]
+        route_output += f' {att_final}\n'
+        print(route_output)
 
 # We need to be able to take in a subset of points and only use those
 # We need to be able to turn on and off the train shortcut
