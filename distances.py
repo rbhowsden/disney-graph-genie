@@ -120,13 +120,13 @@ def shortest_distances(rides=[], train=False, w_speed=4.7, t_speed=5.9):
     return pivot_df
 
 #Need to figure out better way to unpack these
-def traveling_genie(rides, train, w_speed, t_speed):
+def traveling_genie(rides, hours, train, w_speed, t_speed):
 
     df = shortest_distances(rides, train, w_speed, t_speed)
     distance_matrix = df.values.tolist()
     attraction_names = df.columns.tolist()
     starting_node = attraction_names.index('Entrance')
-    hours_in_park = .5
+    hours_in_park = hours
 
     index_manager = (
         pywrapcp.RoutingIndexManager(
@@ -154,7 +154,7 @@ def traveling_genie(rides, train, w_speed, t_speed):
         'TimeCapacity'
     )
 
-    penalty = 100000
+    penalty = 10000
     for node in range(1, len(distance_matrix)):
         routing_model.AddDisjunction([index_manager.NodeToIndex(node)], penalty)
 
@@ -162,6 +162,10 @@ def traveling_genie(rides, train, w_speed, t_speed):
     search_param.first_solution_strategy = (
         routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     )
+    search_param.local_search_metaheuristic = (
+        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
+    #This search paramter affects the outcome rounding at 5 hours.
+    search_param.time_limit.FromSeconds(10)
 
     solution = routing_model.SolveWithParameters(search_param)
 
@@ -179,46 +183,5 @@ def traveling_genie(rides, train, w_speed, t_speed):
 
 # We need to be able to add ride times to the equation
 # We need to limit how much time that we have in the park
-
-
-ride_lengths = {
-    'Alice': 240,
-    'Astro': 90,
-    'Autopia': 270,
-    'Buzz': 270,
-    'Canal': 570,
-    'Canoe': 600,
-    'Carrousel': 180,
-    'Casey': 240,
-    'Dumbo': 100,
-    'Entrance': 0,
-    'Gadget': 60,
-    'Indiana': 600,
-    'Jungle': 450,
-    'Lincoln': 960,
-    'Mad': 90,
-    'Mansion': 540,
-    'Matterhorn': 240,
-    'Millenium': 300,
-    'Monorail': 900,
-    'Nemo': 780,
-    'Peter': 180,
-    'Pinocchio': 180,
-    'Pirates': 900,
-    'Pooh': 240,
-    'Resistance': 1080,
-    'Riverboat': 1080,
-    'Roger': 240,
-    'Small': 840,
-    'Snow': 120,
-    'Space': 300,
-    'Splash': 660,
-    'Thunder': 210,
-    'Tiki': 870,
-    'Toad': 120,
-    'Tours': 420,
-    'Vehicles': 420
-}
-
 
 # https://touringplans.com/disneyland/attractions/duration
