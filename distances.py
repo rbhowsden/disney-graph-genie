@@ -32,24 +32,11 @@ def parse_paths():
     
     return all_paths
 
-def shortest_distances(rides=[], train=False, w_speed=4.7, t_speed=5.9):
+def shortest_distances(w_speed=4.7):
     all_paths = parse_paths()
+    path_times = [(x[0], x[1], x[2]/w_speed) for x in all_paths]
 
-    path_times = []
-    for path in all_paths:
-        if 'Train' in path[0] or 'Train' in path[1]:
-            if train and 'Train' in path[0] and 'Train' in path[1]:
-                path_times.append((path[0], path[1], path[2]/t_speed))
-            elif not train and 'Train' in path[0] and 'Train' in path[1]:
-                continue
-            else:
-                path_times.append((path[0], path[1], path[2]/w_speed))
-                path_times.append((path[1], path[0], path[2]/w_speed))
-        else:
-            path_times.append((path[0], path[1], path[2]/w_speed))
-            path_times.append((path[1], path[0], path[2]/w_speed))
-
-    G = nx.DiGraph()
+    G = nx.Graph()
     G.add_weighted_edges_from(path_times)
 
     short_paths = []
@@ -95,34 +82,59 @@ def shortest_distances(rides=[], train=False, w_speed=4.7, t_speed=5.9):
         'Tiki': 870,
         'Toad': 120,
         'Tours': 420,
-        'Vehicles': 420,
-        'Train1': 0,
-        'Train2': 0,
-        'Train3': 0,
-        'Train4': 0,
-        'Entrance': 0
+        'Vehicles': 420
     }
     
-    filtered_paths = []
-    if rides:
-        for path in short_paths:
-            if path[0] in rides and path[1] in rides:
-                filtered_paths.append(
-                    (path[0], path[1], path[2] + ride_lengths[path[1]])
-                )
-    else:
-        for path in short_paths:
-            filtered_paths.append((path[0], path[1], path[2] + ride_lengths[path[1]]))
+    ride_paths = [(x[0], x[1], x[2] + ride_lengths[x[1]]) for x in short_paths]
 
-    df = pd.DataFrame(filtered_paths, columns = ['Source', 'Target', 'Distance'])
+    df = pd.DataFrame(ride_paths, columns = ['Source', 'Target', 'Distance'])
     pivot_df = df.pivot('Source', 'Target', 'Distance')
     
     return pivot_df
 
-#Need to figure out better way to unpack these
-def traveling_genie(rides, hours, train, w_speed, t_speed):
+ride_priority = {
+    'Alice': 1,
+    'Astro': 1,
+    'Autopia': 1,
+    'Buzz': 1,
+    'Canal': 1,
+    'Canoe': 1,
+    'Carrousel': 1,
+    'Casey': 1,
+    'Dumbo': 1,
+    'Entrance': 0,
+    'Gadget': 1,
+    'Indiana': 1,
+    'Jungle': 1,
+    'Lincoln': 1,
+    'Mad': 1,
+    'Mansion': 1,
+    'Matterhorn': 1,
+    'Millenium': 1,
+    'Monorail': 1,
+    'Nemo': 1,
+    'Peter': 1,
+    'Pinocchio': 1,
+    'Pirates': 1,
+    'Pooh': 1,
+    'Resistance': 1,
+    'Riverboat': 1,
+    'Roger': 1,
+    'Small': 1,
+    'Snow': 1,
+    'Space': 1,
+    'Splash': 1,
+    'Thunder': 1,
+    'Tiki': 1,
+    'Toad': 1,
+    'Tours': 1,
+    'Vehicles': 1
+}
 
-    df = shortest_distances(rides, train, w_speed, t_speed)
+#Need to figure out better way to unpack these
+def traveling_genie(ride_priority, hours, w_speed):
+
+    df = shortest_distances(w_speed)
     distance_matrix = df.values.tolist()
     attraction_names = df.columns.tolist()
     starting_node = attraction_names.index('Entrance')
@@ -156,7 +168,10 @@ def traveling_genie(rides, hours, train, w_speed, t_speed):
 
     penalty = 10000
     for node in range(1, len(distance_matrix)):
-        routing_model.AddDisjunction([index_manager.NodeToIndex(node)], penalty)
+        print(attraction_names[node], penalty*ride_priority[attraction_names[node]])
+        routing_model.AddDisjunction(
+            [index_manager.NodeToIndex(node)],
+            penalty*ride_priority[attraction_names[node]])
 
     search_param = pywrapcp.DefaultRoutingSearchParameters()
     search_param.first_solution_strategy = (
@@ -180,8 +195,5 @@ def traveling_genie(rides, hours, train, w_speed, t_speed):
         att_final = attraction_names[index_manager.IndexToNode(index)]
         route_output += f' {att_final}\n'
         print(route_output)
-
-# We need to be able to add ride times to the equation
-# We need to limit how much time that we have in the park
 
 # https://touringplans.com/disneyland/attractions/duration
