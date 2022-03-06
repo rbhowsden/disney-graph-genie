@@ -168,24 +168,36 @@ def traveling_genie(ride_priority, hours, w_speed):
 
     penalty = 10000
     for node in range(1, len(distance_matrix)):
-        print(attraction_names[node], penalty*ride_priority[attraction_names[node]])
         routing_model.AddDisjunction(
             [index_manager.NodeToIndex(node)],
             penalty*ride_priority[attraction_names[node]])
 
     search_param = pywrapcp.DefaultRoutingSearchParameters()
     search_param.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-    )
+        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
     search_param.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
     #This search paramter affects the outcome rounding at 5 hours.
-    search_param.time_limit.FromSeconds(10)
+    search_param.time_limit.FromSeconds(5)
 
     solution = routing_model.SolveWithParameters(search_param)
 
     if solution:
-        print(f'Best Solution: {solution.ObjectiveValue()} seconds')
+        print(f'Objective: {solution.ObjectiveValue()}')
+        dropped_attractions = 'Dropped attractions: '
+        total_penalty = 0
+        for node in range(routing_model.Size()):
+            if routing_model.IsStart(node) or routing_model.IsEnd(node):
+                continue
+            if solution.Value(routing_model.NextVar(node)) == node:
+                attraction = attraction_names[node]
+                total_penalty += penalty*ride_priority[attraction]
+                dropped_attractions += f'{attraction} '
+        print(dropped_attractions)
+        print(f'Time Allowed: {hours_in_park} hours')
+        print('Time Spent in Park: ',
+            f'{(solution.ObjectiveValue() - total_penalty)/3600} hours')
+
         index = routing_model.Start(0)
         route_output = 'Attraction Route:\n'
         while not routing_model.IsEnd(index):
