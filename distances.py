@@ -92,46 +92,6 @@ def shortest_distances(w_speed=4.7):
     
     return pivot_df
 
-ride_priority = {
-    'Alice': 1,
-    'Astro': 1,
-    'Autopia': 1,
-    'Buzz': 1,
-    'Canal': 1,
-    'Canoe': 1,
-    'Carrousel': 1,
-    'Casey': 1,
-    'Dumbo': 1,
-    'Entrance': 0,
-    'Gadget': 1,
-    'Indiana': 1,
-    'Jungle': 1,
-    'Lincoln': 1,
-    'Mad': 1,
-    'Mansion': 1,
-    'Matterhorn': 1,
-    'Millenium': 1,
-    'Monorail': 1,
-    'Nemo': 1,
-    'Peter': 1,
-    'Pinocchio': 1,
-    'Pirates': 1,
-    'Pooh': 1,
-    'Resistance': 1,
-    'Riverboat': 1,
-    'Roger': 1,
-    'Small': 1,
-    'Snow': 1,
-    'Space': 1,
-    'Splash': 1,
-    'Thunder': 1,
-    'Tiki': 1,
-    'Toad': 1,
-    'Tours': 1,
-    'Vehicles': 1
-}
-
-#Need to figure out better way to unpack these
 def traveling_genie(ride_priority, hours, w_speed):
 
     df = shortest_distances(w_speed)
@@ -177,8 +137,7 @@ def traveling_genie(ride_priority, hours, w_speed):
         routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
     search_param.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
-    #This search paramter affects the outcome rounding at 5 hours.
-    search_param.time_limit.FromSeconds(5)
+    search_param.time_limit.FromSeconds(10)
 
     solution = routing_model.SolveWithParameters(search_param)
 
@@ -196,7 +155,7 @@ def traveling_genie(ride_priority, hours, w_speed):
         print(dropped_attractions)
         print(f'Time Allowed: {hours_in_park} hours')
         print('Time Spent in Park: ',
-            f'{(solution.ObjectiveValue() - total_penalty)/3600} hours')
+            f'{round((solution.ObjectiveValue() - total_penalty)/3600, 3)} hours')
 
         index = routing_model.Start(0)
         route_output = 'Attraction Route:\n'
@@ -208,4 +167,42 @@ def traveling_genie(ride_priority, hours, w_speed):
         route_output += f' {att_final}\n'
         print(route_output)
 
-# https://touringplans.com/disneyland/attractions/duration
+
+ride_priority = {
+    'Alice': 1,
+    'Astro': 1,
+    'Autopia': 1,
+    'Buzz': 1,
+    'Canal': 1,
+    'Canoe': 1,
+    'Carrousel': 1,
+    'Casey': 1,
+    'Dumbo': 1,
+    'Entrance': 0,
+    'Gadget': 1,
+    'Indiana': 1,
+    'Jungle': 1,
+    'Lincoln': 1,
+    'Mad': 1,
+    'Mansion': 1,
+    'Matterhorn': 1,
+    'Millenium': 1,
+    'Monorail': 1,
+    'Nemo': 1,
+    'Peter': 1,
+    'Pinocchio': 1,
+    'Pirates': 1,
+    'Pooh': 1,
+    'Resistance': 3,
+    'Riverboat': 1,
+    'Roger': 1,
+    'Small': 1,
+    'Snow': 1,
+    'Space': 1,
+    'Splash': 1,
+    'Thunder': 1,
+    'Tiki': 1,
+    'Toad': 1,
+    'Tours': 1,
+    'Vehicles': 1
+}
